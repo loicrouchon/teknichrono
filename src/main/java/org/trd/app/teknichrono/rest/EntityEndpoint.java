@@ -8,7 +8,10 @@ import org.trd.app.teknichrono.util.exception.NotFoundException;
 
 import javax.persistence.OptimisticLockException;
 import javax.ws.rs.core.Response;
+import java.util.Collection;
 import java.util.List;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class EntityEndpoint<E, D> {
@@ -78,6 +81,19 @@ public class EntityEndpoint<E, D> {
       }
       return Response.noContent().build();
     }
+  }
+
+  public <T> Response addToCollectionField(Long entityId, Long elementId, EntityRepository<T, ?> elementRepository,
+                                           BiConsumer<T, E> entitySetter, Function<E, ? extends Collection<T>> elements) {
+    E entity = repository.findById(entityId);
+    T element = elementRepository.findById(elementId);
+    if (entity == null || element == null) {
+      Response.status(Response.Status.NOT_FOUND).build();
+    }
+    entitySetter.accept(element, entity);
+    elements.apply(entity).add(element);
+    D dto = repository.toDTO(entity);
+    return Response.ok(dto).build();
   }
 
   public Response findByField(String fieldName, Object fieldValue) {

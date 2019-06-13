@@ -2,9 +2,11 @@ package org.trd.app.teknichrono.rest;
 
 import org.jboss.logging.Logger;
 import org.trd.app.teknichrono.model.dto.CategoryDTO;
+import org.trd.app.teknichrono.model.jpa.Category;
 import org.trd.app.teknichrono.model.jpa.CategoryRepository;
+import org.trd.app.teknichrono.model.jpa.Pilot;
+import org.trd.app.teknichrono.model.jpa.PilotRepository;
 import org.trd.app.teknichrono.util.DurationLogger;
-import org.trd.app.teknichrono.util.exception.NotFoundException;
 
 import javax.inject.Inject;
 import javax.transaction.Transactional;
@@ -19,7 +21,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 import java.util.List;
 
 @Path("/categories")
@@ -28,12 +29,14 @@ public class CategoryEndpoint {
   private static final Logger LOGGER = Logger.getLogger(CategoryEndpoint.class);
 
   private final CategoryRepository categoryRepository;
-  private final EntityEndpoint entityEndpoint;
+  private final PilotRepository pilotRepository;
+  private final EntityEndpoint<Category, CategoryDTO> entityEndpoint;
 
   @Inject
-  public CategoryEndpoint(CategoryRepository categoryRepository) {
+  public CategoryEndpoint(CategoryRepository categoryRepository, PilotRepository pilotRepository) {
     this.categoryRepository = categoryRepository;
-    this.entityEndpoint = new EntityEndpoint(categoryRepository);
+    this.entityEndpoint = new EntityEndpoint<>(categoryRepository);
+    this.pilotRepository = pilotRepository;
   }
 
   @POST
@@ -79,12 +82,7 @@ public class CategoryEndpoint {
   @Transactional
   public Response addPilot(@PathParam("categoryId") long categoryId, @QueryParam("pilotId") Long pilotId) {
     try (DurationLogger perf = DurationLogger.get(LOGGER).start("Add pilot id=" + pilotId + " to category id=" + categoryId)) {
-      try {
-        CategoryDTO dto = categoryRepository.addPilot(categoryId, pilotId);
-        return Response.ok(dto).build();
-      } catch (NotFoundException e) {
-        return Response.status(Status.NOT_FOUND).build();
-      }
+      return entityEndpoint.addToCollectionField(categoryId, pilotId, pilotRepository, Pilot::setCategory, Category::getPilots);
     }
   }
 
